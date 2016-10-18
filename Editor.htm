@@ -1,0 +1,233 @@
+<html>
+<head>
+	<title>JQuery Editor</title>
+	<style type="text/css">
+		#divEditor, #divDisplay {
+			width: 30em;
+			min-height: 40em;
+		}
+		#divEditor {
+			float: left;
+		}
+		#divDisplay {
+			float: right;
+		}
+		.rich-text-editor {
+			border: 1px solid black;
+			padding: 1em;
+		}
+	</style>
+	
+	<!--<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js"></script>-->
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+	<script type="text/javascript">
+	$(document).ready(function() {
+		//alert("document is ready");
+		
+		/*$('#divEditor').blur(function() {
+			$(this).html($(this).html().replace("<div>","").replace("</div>",""));
+			html = $.parseHTML($(this).html())
+			console.log( html );
+			$("#divDisplay").html(html);
+			//alert($(this).html());
+			//alert('Handler for .change() called.');
+		});*/
+	});
+	function fncFixMarkup() {
+		var This = $("#divEditor");
+		This.html(This.html().replace("<div>","").replace("</div>",""));
+		html = $.parseHTML(This.html(), null)
+
+		//for (i = 0; i < html.length; i++) {
+		//	html_index = html[i];
+		//	if (html_index.parentElement != null) {
+		//		var tmp = html_index.parentElement.outerText;
+		//		html_index.parentElement.outerText = "null"; // destroy reference to parent
+		//		tmp = html_index.parentElement.outerText;
+		//	}
+		//}
+
+
+		//console.log( html );
+		//$("#divDisplay").html(html);
+
+
+		strText = "";
+		for (i = 0; i < html.length; i++) {
+			strText += "nodeName = " + html[i].nodeName + "\n";
+			strText += "childElementCount = " + html[i].childElementCount + "\n";
+			strText += html[i].innerText + "\n";
+			strText += "\n";
+		}
+		//console.log(strText);
+
+		//var html_index = html[0];
+		//var _child = html_index.firstElementChild;
+		//html_index.firstElementChild = null;
+		//html_index.firstElementChild = "undefined";
+		//html_index.firstElementChild = '';
+		//delete html_index.firstElementChild;
+		//html_index.firstElementChild.innerText = "null";
+		//_child = html_index.firstElementChild;
+
+		strText = "";
+		// firstElementChild, nextElementSibling, parentElement
+		var html_index;
+		var element;
+		var ul_begin = 0;
+		for (var i = 0; i < html.length; i++) { // Top-level loop
+			
+			html_index = html[i];
+			element = html_index;
+			element.isNULL = 0;
+			if (element.nodeName == "#text") continue; // Doesn't contain anything useful
+			while (true) { // STEP 1: Loop for next child until we hit bottom
+				if (element.firstElementChild == null || element.firstElementChild.isNULL == 1) { // We have drilled down all the way
+					// STEP 2: Replace plain text in parent element with plain text plus element (if we support element)
+					switch (element.nodeName.toLowerCase()) { // Check for supported tags. Most tags get thrown away
+						case 'b':
+						case 'i':
+						case 'u':
+							{
+								var tag = element.nodeName.toLowerCase();
+								if (element.parentElement != null) {
+									if (element.nodeName.toLowerCase() == 'u' && element.innerHTML.includes('blue')) { // Underline elements can simply be an underline, or can represent a hyperlink. Check for the color "Blue" in a style tag
+										tag = 'a';
+									}
+									element.parentElement.innerText = element.parentElement.innerText.replace(element.innerText, "<" + tag + ">" + element.innerText + "</" + tag + ">"); // Replace the portion of the parent text that is the child text, including the child tag object
+								}
+							} break;
+						case 'p':
+							{
+								if (element.outerHTML.includes('margin')) {
+									if (!element.innerText.includes('<li>')) {
+									    var bullet_point_version = 0;
+									    var index_substring = 0;
+
+										if (isNaN(parseInt(element.innerText[0]))) { // Regular bullet points
+										    bullet_point_version = 0;
+										    index_substring = 1; // Bullet point is single character
+										}
+										else {
+										    bullet_point_version = 1;
+										    index_substring = element.innerText.indexOf('.') + 1; // Bullet point is a number, followed by a period
+										}
+										var count1 = element.innerText.indexOf(' ');
+										var count2 = element.innerText.indexOf('&nbsp;');
+										var count3 = element.innerText.indexOf('\t');
+										element.innerText = '<li>' + element.innerText.substring(index_substring).replace(/&nbsp;/g, ' ').trim() + '</li>';
+
+										if (ul_begin == 0) {
+											if (bullet_point_version == 0) {
+												element.innerText = '<ul>' + element.innerText;
+												ul_begin = 1;
+											}
+											else {
+												element.innerText = '<ol>' + element.innerText;
+												ul_begin = 2;
+											}
+										}
+									}
+								}
+								else {
+									if (element.innerText.length < 2) {
+										if (ul_begin > 0) {
+											if (ul_begin == 1) element.innerText += '</ul>';
+											else if (ul_begin == 2) element.innerText += '</ol>';
+											ul_begin = 0;
+										}
+										else {
+											element.innerText += "<br /><br />"
+										}
+									}
+									//if (element.parentElement != null) {
+									//	if (element.nodeValue == "\n") {
+									//		element.parentElement.innerText += "<br />"
+									//	}
+									//}
+								}
+							} break;
+					}
+					// STEP 3: Go to next sibling. If next sibling doesn't exist, got to parent:
+					if (element.nextElementSibling != null)
+					{
+						element = element.nextElementSibling;
+						element.isNULL = 0;
+					}
+					else {
+						if (element.parentElement != null && element != html_index) {
+							element = element.parentElement;
+							//element.firstElementChild = null; // Destroy reference to child, as we have finished work at that level
+							element.firstElementChild.isNULL = 1;
+						}
+						else break; // we have reached the top, so break out back into main loop
+					}
+				}
+				else {
+					element = element.firstElementChild;
+				}
+
+			} // end while (true)
+			if (html[i].innerText !== undefined) strText += html[i].innerText;
+		}//end for (i = 0; i < html.length; i++)
+		//console.log(strText);
+
+		// Level 2 HTML building:
+		strText = strText.replace(/<a>/g, '<a href="/" target="_blank">'); // Find basic Anchor tags and replace them with appropriate attributes
+		//strText = strText.replace(/<li><\li>/g,'');
+		strText = strText.replace(/\n/g, ' '); // remove all line feeds
+		strText = strText.replace(/<ul>/g, '\n<ul>');
+		strText = strText.replace(/<\/ul>/g, '\n</ul>\n');
+		strText = strText.replace(/<ol>/g, '\n<ol>');
+		strText = strText.replace(/<\/ol>/g, '\n</ol>\n');
+		strText = strText.replace(/<li>/g, '\n\t<li>');
+		strText = strText.replace(/<br \/><br \/>/g, '\n<br /><br />\n');
+	    // Repalce all special characters:
+		strText = strText.replace(/…/g, '&hellip;');
+		strText = strText.replace(/(^|[^.])\.{3}(?!\.)/g, '&hellip;'); // ...
+		strText = strText.replace(/“/g, '&ldquo;');
+		strText = strText.replace(/”/g, '&rdquo;');
+		strText = strText.replace(/—/g, '&ndash;');
+		strText = strText.replace(/ - /g, ' &ndash; ');
+		strText = strText.replace(/’/g, '&rsquo;');
+		strText = strText.replace(/'/g, '&rsquo;');
+
+		strText = strText.replace(/&nbsp;/g, ' '); // replace all &nbsp; charcaters with space. This allows us to then trim the strings.
+        var strTextArray = strText.split('\n'); // Split on newline
+		strText = "";
+		for (i = 0; i < strTextArray.length; i++) {
+		    var strTemp = strTextArray[i].trim();
+		    if (strTemp.indexOf('<li>') == 0) { // This is a bullet point
+		        strText += '\t' + strTextArray[i].trim() + '\n';
+		    }
+		    else {
+		        strText += strTextArray[i].trim() + '\n';
+		    }
+		}
+
+        // search through string and trim all nodes
+
+
+
+		$("#divDisplay").html(strText);
+		console.log(strText);
+
+
+
+
+		//alert(html.length);
+
+		//alert($(this).html());
+		//alert('Handler for .change() called.');
+	}
+	</script>
+</head>
+<body>
+	<div id="divEditor" class="rich-text-editor" contenteditable="true">
+	</div>
+	<a href="javascript:fncFixMarkup();">Execute</a>
+	<div id="divDisplay" class="rich-text-editor">
+	</div>
+	<div style="clear: both;"></div>
+</body>
+</html>
